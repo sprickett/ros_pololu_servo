@@ -124,22 +124,21 @@ void PololuController::publish_motor_state()
 
         Motor motor;
         motor = (iterator->second);
+        bool position_ok = false;
 
         //nab the pulse from the interface based on the motor_id we're requesting about.
         if(daisy_chain)
-        {
-            serial_interface->getPositionPP(motor.pololu_id, motor.motor_id, pulse);
-        }
+            position_ok = serial_interface->getPositionPP(motor.pololu_id, motor.motor_id, pulse);
         else
-        {
-            serial_interface->getPositionCP(motor.motor_id, pulse);
-        }
+            position_ok = serial_interface->getPositionCP(motor.motor_id, pulse);
 
-	ros::Time stamp = ros::Time::now();
+        motor_state.stamp = ros::Time::now(); // approximate
+
+        if(!position_ok)
+            ROS_WARN_STREAM_THROTTLE(1, "Failed to get position for motor " << motor.motor_id << " (" << motor.pololu_id << ")");
 
         // dividing by four to convert Maestro's PWM pulse to what we're working with.
         pulse = pulse / 4u;
-
 
         motor_state.name = motor.name;
         motor_state.pololu_id = motor.pololu_id;
@@ -149,8 +148,6 @@ void PololuController::publish_motor_state()
         motor_state.radians = PololuMath::to_radians(pulse, motor) * motor.direction;
         motor_state.degrees = to_degrees(motor_state.radians); // (this looks like an error): * motor.direction;
         motor_state.pulse = pulse;
-
-        motor_state.stamp = stamp;
 
         motor_state.calibration.min_pulse = motor.calibration.min_pulse;
         motor_state.calibration.min_radians = PololuMath::to_radians(motor.calibration.min_pulse, motor);
@@ -248,20 +245,23 @@ void PololuController::motor_command_callback(const MotorCommand::ConstPtr& msg)
             double speed = PololuMath::interpolate(msg->speed, 0.0, 1.0, 0, 255.0); //Set speed, make sure doesn't below 0, which is max speed
             double acceleration = PololuMath::interpolate(msg->acceleration, 0.0, 1.0, 0, 255.0); //Set acceleration, make sure doesn't go below 0, which is max acceleration
             double pulse_m = PololuMath::clamp(pulse * 4.0, 3280, 8700);
+            int result = 0;
 
             if(daisy_chain)
             {
                 serial_interface->setSpeedPP(motor.pololu_id, motor.motor_id, speed);
                 serial_interface->setAccelerationPP(motor.pololu_id, motor.motor_id, acceleration);
                 serial_interface->setTargetPP(motor.pololu_id, motor.motor_id, (int)pulse_m);
-                ROS_INFO("id: %d/%d, pulse:  %f, pos: %f, speed: %f, accel: %f", motor.pololu_id, motor.motor_id, pulse_m, msg->position, speed, acceleration);
+                ROS_INFO("id: %d/%d, pulse:  %f, pos: %f, speed: %f, accel: %f", 
+                        motor.pololu_id, motor.motor_id, pulse_m, msg->position, speed, acceleration);
             }
             else
             {
                 serial_interface->setSpeedCP(motor.motor_id, speed);
                 serial_interface->setAccelerationCP(motor.motor_id, acceleration);
                 serial_interface->setTargetCP(motor.motor_id, (int)pulse_m);
-                ROS_INFO("id: %d, pulse:  %f, pos: %f, speed: %f, accel: %f", motor.motor_id, pulse_m, msg->position, speed, acceleration);
+                ROS_INFO("id: %d, pulse:  %f, pos: %f, speed: %f, accel: %f", 
+                        motor.motor_id, pulse_m, msg->position, speed, acceleration);
             }
         }
     }
