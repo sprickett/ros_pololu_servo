@@ -125,8 +125,6 @@ void PololuController::publish_motor_state()
         Motor motor;
         motor = (iterator->second);
 
-        ros::Time pre_stamp = ros::Time::now();
-
         //nab the pulse from the interface based on the motor_id we're requesting about.
         if(daisy_chain)
         {
@@ -137,7 +135,7 @@ void PololuController::publish_motor_state()
             serial_interface->getPositionCP(motor.motor_id, pulse);
         }
 
-        ros::Time post_stamp = ros::Time::now();
+	ros::Time stamp = ros::Time::now();
 
         // dividing by four to convert Maestro's PWM pulse to what we're working with.
         pulse = pulse / 4u;
@@ -152,9 +150,7 @@ void PololuController::publish_motor_state()
         motor_state.degrees = to_degrees(motor_state.radians); // (this looks like an error): * motor.direction;
         motor_state.pulse = pulse;
 
-        motor_state.stamp = post_stamp;
-        auto du = post_stamp - pre_stamp;
-        ROS_INFO_STREAM("Pololu round trip: " << du.toSec()  );
+        motor_state.stamp = stamp;
 
         motor_state.calibration.min_pulse = motor.calibration.min_pulse;
         motor_state.calibration.min_radians = PololuMath::to_radians(motor.calibration.min_pulse, motor);
