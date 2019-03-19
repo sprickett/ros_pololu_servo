@@ -40,8 +40,8 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <ros_pololu_servo/Calibration.h>
 #include <ros_pololu_servo/PololuController.h>
 #include <ros_pololu_servo/MotorCommand.h>
-#include <ros_pololu_servo/MotorState.h>
-#include <ros_pololu_servo/MotorStateList.h>
+#include <ros_pololu_servo/MotorStateStamped.h>
+#include <ros_pololu_servo/MotorStateStampedList.h>
 #include <ros_pololu_servo/MotorRange.h>
 
 struct Motor;
@@ -60,7 +60,7 @@ class PololuController
         int baud_rate, rate_hz;
         bool daisy_chain;
 
-        ros_pololu_servo::MotorStateList motor_state_list;
+        ros_pololu_servo::MotorStateStampedList motor_state_list;
         map<string, Motor> motors;
         Motor default_motor();
 

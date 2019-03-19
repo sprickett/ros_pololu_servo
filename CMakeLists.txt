@@ -57,6 +57,8 @@ add_message_files(
    MotorCommand.msg
    MotorState.msg
    MotorStateList.msg
+   MotorStateStamped.msg
+   MotorStateStampedList.msg
  )
 
 ## Generate services in the 'srv' folder
