@@ -124,7 +124,8 @@ add_library(ros_pololu_servo
    src/ros_pololu_servo/PololuYamlParser.cpp
    src/ros_pololu_servo/PololuController.cpp
  )
-
+## Ensure messages get built first
+add_dependencies(ros_pololu_servo ros_pololu_servo_generate_messages_cpp)
 
 ## Declare a cpp executable
 add_executable(ros_pololu_servo_node src/pololu_controller_node.cpp)
