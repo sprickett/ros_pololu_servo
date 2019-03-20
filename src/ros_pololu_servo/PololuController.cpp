@@ -112,7 +112,6 @@ bool PololuController::motor_range_callback(MotorRange::Request &req, MotorRange
 
 void PololuController::publish_motor_state()
 {
-
     //refresh the motor states
     motor_state_list.motor_states.clear();
 
@@ -124,17 +123,17 @@ void PololuController::publish_motor_state()
 
         Motor motor;
         motor = (iterator->second);
-        bool position_ok = false;
+        bool success = false;
 
         //nab the pulse from the interface based on the motor_id we're requesting about.
         if(daisy_chain)
-            position_ok = serial_interface->getPositionPP(motor.pololu_id, motor.motor_id, pulse);
+            success = serial_interface->getPositionPP(motor.pololu_id, motor.motor_id, pulse);
         else
-            position_ok = serial_interface->getPositionCP(motor.motor_id, pulse);
+            success = serial_interface->getPositionCP(motor.motor_id, pulse);
 
         motor_state.stamp = ros::Time::now(); // approximate
 
-        if(!position_ok)
+        if(!success)
             ROS_WARN_STREAM_THROTTLE(1, "Failed to get position for motor " << motor.motor_id << " (" << motor.pololu_id << ")");
 
         // dividing by four to convert Maestro's PWM pulse to what we're working with.
@@ -159,7 +158,6 @@ void PololuController::publish_motor_state()
 
         motor_state_list.motor_states.push_back(motor_state);
     }
-
     motor_state_list_pub.publish(motor_state_list);
 }
 
@@ -168,19 +166,20 @@ double PololuController::get_rate_hz()
     return rate_hz;
 }
 
-Motor PololuController::default_motor(){
-  Motor m;
-  m.pololu_id = 0;
-  m.motor_id = -1;
-  m.init = 1500;
-  m.min = 820;
-  m.max = 2175;
-  m.direction = 1.0;
-  m.calibration.min_pulse = 820;
-  m.calibration.max_pulse = 2175;
-  m.calibration.min_angle = -M_PI/2;
-  m.calibration.max_angle = M_PI/2;
-  return m;
+Motor PololuController::default_motor()
+{
+    Motor m;
+    m.pololu_id = 0;
+    m.motor_id = -1;
+    m.init = 1500;
+    m.min = 820;
+    m.max = 2175;
+    m.direction = 1.0;
+    m.calibration.min_pulse = 820;
+    m.calibration.max_pulse = 2175;
+    m.calibration.min_angle = -M_PI/2;
+    m.calibration.max_angle = M_PI/2;
+    return m;
 }
 
 void PololuController::motor_command_callback(const MotorCommand::ConstPtr& msg)
@@ -191,18 +190,25 @@ void PololuController::motor_command_callback(const MotorCommand::ConstPtr& msg)
     // Allow to send commands to named and unnamed motors
     bool success = true;
     Motor motor;
-    if(iterator != motors.end()){
-      motor = motors[msg->joint_name];
-    }else{
-      int motor_id = std::atoi(msg->joint_name.c_str());
 
-      if (motor_id == 0 && msg->joint_name != "0" ){
-        success = false;
-      }else{
-        motor = default_motor();
-        motor.motor_id = motor_id;
-      }
+    if(iterator != motors.end())
+    {
+        motor = motors[msg->joint_name];
+    }   
+    else
+    {
+        int motor_id = std::atoi(msg->joint_name.c_str());
+        if (motor_id == 0 && msg->joint_name != "0" )
+        {
+            success = false;
+        }   
+        else
+        {
+            motor = default_motor();
+            motor.motor_id = motor_id;
+        }
     }
+
     if(success)
     {
 
@@ -226,7 +232,6 @@ void PololuController::motor_command_callback(const MotorCommand::ConstPtr& msg)
         double new_max = std::max(min, max);
         double new_position = msg->position;
 
-
         if((new_min - 0.001) > new_position)
         {
             ROS_ERROR("trying to set motor %s position is %f degrees (should be between %f and %f degrees. Attempting to fail gracefully by clamping.)", msg->joint_name.c_str(), msg->position, new_min, new_max);
@@ -241,11 +246,9 @@ void PololuController::motor_command_callback(const MotorCommand::ConstPtr& msg)
         if(send_commands)
         {
             double pulse = PololuMath::to_pulse(new_position, motor);
-
             double speed = PololuMath::interpolate(msg->speed, 0.0, 1.0, 0, 255.0); //Set speed, make sure doesn't below 0, which is max speed
             double acceleration = PololuMath::interpolate(msg->acceleration, 0.0, 1.0, 0, 255.0); //Set acceleration, make sure doesn't go below 0, which is max acceleration
             double pulse_m = PololuMath::clamp(pulse * 4.0, 3280, 8700);
-            int result = 0;
 
             if(daisy_chain)
             {
