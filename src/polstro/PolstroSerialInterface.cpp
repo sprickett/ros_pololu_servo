@@ -21,7 +21,8 @@ THE SOFTWARE.
 
 
 #include <polstro/PolstroSerialInterface.h>
-
+#include <stdio.h>
+#include <unistd.h>
 #ifdef _WIN32
 	#include <polstro/PolstroSerialInterfaceWindows.h>
 #else
@@ -128,8 +129,8 @@ bool SerialInterface::getPositionCP( unsigned char channelNumber, unsigned short
 	unsigned char command[2] = { 0x90, channelNumber };
 	if ( !writeBytes( command, sizeof(command) ) )
 		return false;
-
-	unsigned char response[2] = { 0x00, 0x00 };
+	
+	unsigned char response[2];
 	if ( !readBytes( response, sizeof(response) ) )
 		return false;
 
@@ -147,7 +148,7 @@ bool SerialInterface::getPositionPP( unsigned char deviceNumber, unsigned char c
 	unsigned char command[4] = { 0xAA, deviceNumber, 0x90 & 0x7F, channelNumber };
 	if ( !writeBytes( command, sizeof(command) ) )
 		return false;
-
+	printf("getPositionPP \n");
 	unsigned char response[2] = { 0x00, 0x00 };
 	if ( !readBytes( response, sizeof(response) ) )
 		return false;
@@ -166,6 +167,7 @@ bool SerialInterface::getMovingStateCP( bool& servosAreMoving )
 	if ( !writeBytes( &command, sizeof(command) ) )
 		return false;
 
+	printf("getMovingStateCP \n");
 	unsigned char response = 0x00;
 	if ( !readBytes( &response, sizeof(response) ) )
 		return false;
@@ -187,6 +189,7 @@ bool SerialInterface::getMovingStatePP( unsigned char deviceNumber, bool& servos
 	if ( !writeBytes( command, sizeof(command) ) )
 		return false;
 
+	printf("getMovingStatePP \n");
 	unsigned char response = 0x00;
 	if ( !readBytes( &response, sizeof(response) ) )
 		return false;

@@ -1,3 +1,4 @@
+
 /*Copyright (c) 2013 Jacques Menuet
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -21,11 +22,11 @@ THE SOFTWARE.
 
 
 #include <polstro/PolstroSerialInterfacePOSIX.h>
-
+#include <stdlib.h>
 #include <fcntl.h>
 #include <stdio.h>
 #include <unistd.h>
-
+#include <iostream>
 #ifdef _WIN32
 #define O_NOCTTY 0
 #else
@@ -74,14 +75,37 @@ int SerialInterfacePOSIX::openPort( const std::string& portName )
 		return -1;
 	}
 
-#ifndef _WIN32
-	struct termios options;
-	tcgetattr(fd, &options);
-	options.c_lflag &= ~(ECHO | ECHONL | ICANON | ISIG | IEXTEN);
-	options.c_oflag &= ~(ONLCR | OCRNL);
-	tcsetattr(fd, TCSANOW, &options);
-#endif
+	// Flush away any bytes previously read or written.
+  	int result = tcflush(fd, TCIOFLUSH);
+  	if (result)
+  	{
+    		perror("tcflush failed");  // just a warning, not a fatal error
+  	}
 
+	// Get the current configuration of the serial port.
+  	struct termios options;
+	result = tcgetattr(fd, &options);
+  	
+	// Turn off any options that might interfere with our ability to send and
+        // receive raw binary bytes.
+        options.c_iflag &= ~(INLCR | IGNCR | ICRNL | IXON | IXOFF);
+        options.c_oflag &= ~(ONLCR | OCRNL);
+        options.c_lflag &= ~(ECHO | ECHONL | ICANON | ISIG | IEXTEN);
+ 
+        // Set up timeouts: Calls to read() will return as soon as there is
+        // at least one byte available or when 100 ms has passed.
+//        options.c_cc[VTIME] = 1;
+//        options.c_cc[VMIN] = 2;
+
+	tcsetattr(fd, TCSANOW, &options);
+  	if (result)
+  	{
+    		perror("tcgetattr failed");
+    		close(fd);
+    		return -1;
+  	}
+ 
+  	
 	return fd;
 }
 
@@ -110,9 +134,11 @@ bool SerialInterfacePOSIX::readBytes( unsigned char* data, unsigned int numBytes
 {
 	if ( !isOpen() )
 		return false;
-
+	//sleep(5);
 	// See http://linux.die.net/man/2/read
+	/*
 	ssize_t ret = read( mFileDescriptor, data, numBytesToRead );
+	
 	if ( ret==-1 )
 	{
 		printf("Error reading. errno=%d\n", errno );
@@ -120,10 +146,33 @@ bool SerialInterfacePOSIX::readBytes( unsigned char* data, unsigned int numBytes
 	}
 	else if ( ret!=numBytesToRead )
 	{
-		printf("Error reading. Read %ld bytes instead of %d\n", ret, numBytesToRead );
+		printf("%02X:%02X:%02X:%02X ", data[0], data[1], data[2], data[3]);	
+		printf("Error reading. Read %ld bytes instead of %d.  \n", ret, numBytesToRead);
+				
 		return false;
 	}
+	printf("%02X:%02X:%02X:%02X %02X:%02X:%02X:%02X \n", data[0], data[1], data[2], data[3], data[4], data[5], data[6], data[7]);
 	return true;
+	*/
+
+	size_t received = 0;
+ 	while (received < numBytesToRead)
+  	{
+    		ssize_t ret = read(mFileDescriptor, data + received, numBytesToRead - received);
+		if (ret < 0)
+    		{
+			std::cerr << "Error reading" << std::endl;
+                	return false;
+    		}
+    		if (ret == 0)
+    		{
+			std::cerr << "Error Read timeout" << std::endl;
+      			return false;
+    		}
+    		received += ret;
+  	}
+	
+  	return true;
 }
 
 };
